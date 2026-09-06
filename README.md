@@ -7,6 +7,16 @@ The whole design goal is *low inhibition* — closer to brushing your teeth than
 to journaling. It should be usable when you're tired, in a bad mood, or already
 in bed with the lights off.
 
+## Two versions
+
+- **`docs/` — the web app.** Works on your phone with no Mac involved: open the
+  URL, *Add to Home Screen*, and it behaves like an installed app (own icon, no
+  browser bars, works offline). **Start here.**
+- **`Nightly/` — the native SwiftUI app.** Same design, needs a Mac with Xcode 16
+  to install. Adds haptics and a real scheduled notification.
+
+Both keep their data on the device; they don't share it.
+
 ## How it works
 
 Open the app and you're on tonight's card. Nothing else — no tabs, no dashboard,
@@ -55,7 +65,28 @@ Two JSON files in the app's Application Support directory. No account, no sync,
 no network calls — it works in airplane mode. Settings has an **Export entries as
 JSON** button, and everything is deletable from there.
 
-## Building it
+## Running the web app
+
+It's a static site — no build step, no dependencies, no framework.
+
+**On GitHub Pages:** repo **Settings → Pages → Source: Deploy from a branch**,
+pick the branch and the **`/docs`** folder, Save. A minute later it's live at
+`https://<user>.github.io/<repo>/`. Open that on your phone, tap **Share → Add to
+Home Screen**.
+
+**Locally:** `python3 -m http.server -d docs 8000`, then open
+`http://localhost:8000`. (A service worker needs `http://localhost` or HTTPS —
+opening `index.html` as a file won't register it.)
+
+### What the web version gives up
+
+- **No scheduled reminder.** A web app can't post its own nightly notification on
+  iPhone. Use a repeating alarm or a Shortcuts automation that opens Nightly.
+- **No haptics.** iOS Safari doesn't expose the vibration API.
+- **Storage is `localStorage`**, so clearing Safari's website data would wipe it.
+  Settings has *Copy backup* / *Download backup* / *Restore from pasted backup*.
+
+## Running the native app
 
 Requires Xcode 16 or newer (the project uses a file-system synchronized group, so
 new files in `Nightly/Nightly/` are picked up without touching the project file).
@@ -66,14 +97,23 @@ open Nightly/Nightly.xcodeproj
 
 Then pick a simulator or your device and hit Run. To run on your own iPhone,
 change **Signing & Capabilities → Team** to your Apple ID and set a unique bundle
-identifier (it ships as `com.example.Nightly`).
+identifier (it ships as `com.example.Nightly`). With a free Apple ID the build
+expires after 7 days and needs re-running.
 
 Deployment target is iOS 17.0.
 
 ## Layout
 
 ```
-Nightly/Nightly/
+docs/                     the web app (GitHub Pages serves this folder)
+  index.html              shell
+  app.js                  all behavior — days, entries, streaks, rendering
+  styles.css              theme tokens, cards, sheets
+  sw.js                   offline cache
+  manifest.webmanifest    home-screen install metadata
+  tools/make-icons.py     regenerates the moon icons
+
+Nightly/Nightly/          the native app
   NightlyApp.swift        app entry
   Models/                 Rating, Prompt, DayEntry, DayKey, AppSettings
   Store/                  EntryStore (JSON persistence), Reminders
@@ -83,8 +123,10 @@ Nightly/Nightly/
 
 ## Possible next steps
 
-- A Lock Screen / Home Screen widget that logs a night in one tap, without opening
-  the app.
-- A Shortcuts action so "Hey Siri, log tonight" works from bed.
+- A Shortcuts automation that opens the app at bedtime (closest thing to a
+  reminder on the web version).
+- For the native app: a Lock Screen widget that logs a night without opening the
+  app, and a Siri phrase for logging from bed.
 - iCloud sync, if this ever needs to live on more than one device.
-- An app icon — the asset slot is there and empty.
+- The native app's icon slot is still empty — `docs/tools/make-icons.py` renders
+  the moon artwork the web version uses and could fill it.
